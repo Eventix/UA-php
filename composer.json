@@ -1,0 +1,22 @@
+{
+    "name": "useradapted/php-client",
+    "description": "UserAdapted PHP Client sends details about the current visitor to the server and responds with a Persona, for more information see useradapted.com",
+    "require": {
+        "react/event-loop": "^0.4.1"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "4.0.*",
+        "itsgoingd/clockwork": "^1.9"
+    },
+    "authors": [
+        {
+            "name": "Chris de Jong",
+            "email": "Chris@eventix.nl"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "UserAdapted\\": "src"
+        }
+    }
+}
