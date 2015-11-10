@@ -7,7 +7,7 @@ Install with composer
  {
  identity: '',
 data: {
- javasscript:
+ javasscript: {
  ad_blocker: true
  body_height: 1200
  body_width: 2042
@@ -18,6 +18,7 @@ data: {
  identifier: "1445260407223253212"
  plugin: "request_javascript"
  request: "3"
+ }
  }
 }
  ```
