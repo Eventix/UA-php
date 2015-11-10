@@ -12,7 +12,8 @@ class UserAdapted
      * UserAdapted version
      */
     const VERSION       = '0.1';
-    const HOST          = 'http://useradapted.herokuapp.com/analyse/headers'; // TODO: uitsplitsen per plugin
+    const HOST          = 'http://useradapted.herokuapp.com/'; // TODO: uitsplitsen per plugin
+    public $plugin      = 'analyse/headers';
 //    const HOST          = 'http://131.155.222.105:8000/analyse/headers'; // TODO: uitsplitsen per plugin
     const COOKIE_PREFIX = '_ua';
 
@@ -56,23 +57,23 @@ class UserAdapted
         return $this->filterHeaders($_SERVER);
     }
 
-    protected function sendRequest($data = [])
+    public function sendRequest($data = [])
     {
         $this->sendCurl($data);
     }
 
     public function sendCurl($data)
     {
-        $data['identity']         = $this->getIdentifier();
-        $data['probe']         = 0;
+        $data['identity']   = $this->getIdentifier();
+        $data['probe']      = 0;
         $data['request']    = $this->getRequestId();
 
         // Get cURL resource
         $curl = curl_init();
-
+//        dd(self::HOST.$this->plugin);
         curl_setopt_array($curl, array(
             CURLOPT_RETURNTRANSFER => 1,
-            CURLOPT_URL => self::HOST,
+            CURLOPT_URL => self::HOST.$this->plugin,
             CURLOPT_USERAGENT => 'UA V' . $this->version(),
             CURLOPT_HTTPHEADER => array('Content-Type:application/json'),//            , 'Content-Length: ' . strlen(serialize($data))), -> werkt niet
             CURLOPT_POST => 1,
@@ -82,8 +83,10 @@ class UserAdapted
             CURLOPT_PORT => 80,
         ));
         // Send the request & save response to $resp
-//        echo json_encode($data);
-//        exit;
+//        if(isset($_GET['plugin'])){
+//            echo json_encode($data);
+//            exit;
+//        }
         $resp = curl_exec($curl);
         if (FALSE === $resp)
             throw new \Exception(curl_error($curl), curl_errno($curl));
@@ -103,6 +106,10 @@ class UserAdapted
         return self::VERSION;
     }
 
+    public function setPlugin($plugin = 'headers'){
+        $this->plugin = 'analyse/'.$plugin;
+    }
+
 
     /**
      * Returns a filtered list of the headers
@@ -115,7 +122,7 @@ class UserAdapted
         foreach ($data as $key => $value) {
             if (
                 strpos($key, 'HTTP_') !== false ||
-                $key == 'REMOTE_ADDR' || true
+                $key == 'REMOTE_ADDR'
             ) {
                 $filtered[$key] = $value;
             }
@@ -146,6 +153,7 @@ class UserAdapted
         if ($this->getCookie($cn) != null) {
             $this->client_id = $this->getCookie($cn);
         } else {
+            // TODO: rewrite -1, if need info fast; 0 -> create id, remember!; >0 get profile
             $this->client_id = $this->generateIdentifier();
         }
         return $this->client_id;
