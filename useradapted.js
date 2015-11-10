@@ -65,10 +65,10 @@ function finish(){
 function makeRequest(){
     var payload = {};
     /* Make sure to add identifier */
-    payload.id = jsCookies.get("_ua");
+    payload.identifier = jsCookies.get("_ua");
     payload.request = jsCookies.get("_uar");
     payload.plugin = 'request_javascript';
-    payload.data = data;
+    payload.data = {js: data};
     console.log(payload);
 
     jsCookies.set("_uar", parseInt(data.request)+1, 1000);
@@ -79,6 +79,7 @@ function makeRequest(){
         xhttp = new ActiveXObject("Microsoft.XMLHTTP");
     }
     xhttp.open("POST", "http://localhost/useradapted/", true);
+    xhttp.open("POST", "http://useradapted.herokuapp.com/analyse/javascript", true);
     xhttp.setRequestHeader("Content-type", "application/json");
     xhttp.send(JSON.stringify(payload));
 }

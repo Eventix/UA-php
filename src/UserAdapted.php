@@ -11,8 +11,9 @@ class UserAdapted
     /**
      * UserAdapted version
      */
-    const VERSION = '0.1';
-    const HOST = 'localhost';
+    const VERSION       = '0.1';
+    const HOST          = 'http://useradapted.herokuapp.com/analyse/headers'; // TODO: uitsplitsen per plugin
+//    const HOST          = 'http://131.155.222.105:8000/analyse/headers'; // TODO: uitsplitsen per plugin
     const COOKIE_PREFIX = '_ua';
 
     protected $api_key = null;
@@ -39,7 +40,7 @@ class UserAdapted
             $this->$key = $value;
         }
 
-        if($this->api_key == null){
+        if ($this->api_key == null) {
             throw new \InvalidArgumentException('Api key not set');
         }
     }
@@ -47,24 +48,24 @@ class UserAdapted
     protected function sendHeaders()
     {
         $headers = $this->buildHeaderArray();
-        $this->sendRequest(array('plugin' => 'request_headers', 'data' => $headers));
+        $this->sendRequest(array('data' => ['headers' => $headers]));
     }
 
     protected function buildHeaderArray()
     {
-       return $this->filterHeaders($_SERVER);
+        return $this->filterHeaders($_SERVER);
     }
 
     protected function sendRequest($data = [])
     {
-
-
         $this->sendCurl($data);
     }
 
-    public function sendCurl($data){
-        $data['id']      = $this->getIdentifier();
-        $data['request'] = $this->getRequestId();
+    public function sendCurl($data)
+    {
+        $data['identity']         = $this->getIdentifier();
+        $data['probe']         = 0;
+        $data['request']    = $this->getRequestId();
 
         // Get cURL resource
         $curl = curl_init();
@@ -72,16 +73,24 @@ class UserAdapted
         curl_setopt_array($curl, array(
             CURLOPT_RETURNTRANSFER => 1,
             CURLOPT_URL => self::HOST,
-            CURLOPT_USERAGENT => 'UA V'.$this->version(),
-            CURLOPT_HTTPHEADER => array('Content-Type:application/json', 'Content-Length: ' . strlen(serialize($data))),
+            CURLOPT_USERAGENT => 'UA V' . $this->version(),
+            CURLOPT_HTTPHEADER => array('Content-Type:application/json'),//            , 'Content-Length: ' . strlen(serialize($data))), -> werkt niet
             CURLOPT_POST => 1,
-            CURLOPT_POSTFIELDS => json_encode($data)
+            CURLOPT_POSTFIELDS => json_encode($data),
+            CURLOPT_CONNECTTIMEOUT  => 1,
+            CURLOPT_TIMEOUT => 1,
+            CURLOPT_PORT => 80,
         ));
         // Send the request & save response to $resp
-        echo json_encode($data);
-//        $resp = curl_exec($curl);
+//        echo json_encode($data);
+//        exit;
+        $resp = curl_exec($curl);
+        if (FALSE === $resp)
+            throw new \Exception(curl_error($curl), curl_errno($curl));
+
         // Close request to clear up some resources
-//        curl_close($curl);
+        curl_close($curl);
+//        dd($resp);
     }
 
 
@@ -95,20 +104,19 @@ class UserAdapted
     }
 
 
-
-
     /**
      * Returns a filtered list of the headers
      * @param array $data
      * @return array
      */
-    protected function filterHeaders($data = []){
+    protected function filterHeaders($data = [])
+    {
         $filtered = array();
-        foreach($data as $key => $value){
-            if(
-                    strpos($key, 'HTTP_') !== false ||
-                    $key == 'REMOTE_ADDR'
-                ){
+        foreach ($data as $key => $value) {
+            if (
+                strpos($key, 'HTTP_') !== false ||
+                $key == 'REMOTE_ADDR' || true
+            ) {
                 $filtered[$key] = $value;
             }
         }
@@ -121,7 +129,8 @@ class UserAdapted
      *
      * @param $id (first request id)
      */
-    protected function setIdentifier($id = null){
+    protected function setIdentifier($id = null)
+    {
         $cn = self::COOKIE_PREFIX; // Cookie name
         $this->setCookie($cn, $id);
     }
@@ -131,13 +140,13 @@ class UserAdapted
      *
      * @return null
      */
-    protected function getIdentifier(){
+    protected function getIdentifier()
+    {
         $cn = self::COOKIE_PREFIX; // Cookie name
-        if($this->getCookie($cn) != null){
+        if ($this->getCookie($cn) != null) {
             $this->client_id = $this->getCookie($cn);
-        }
-        else{
-           $this->client_id = $this->generateIdentifier();
+        } else {
+            $this->client_id = $this->generateIdentifier();
         }
         return $this->client_id;
     }
@@ -148,21 +157,22 @@ class UserAdapted
      */
     protected function generateIdentifier()
     {
-        $id = time(). mt_rand();
+        $id = time() . mt_rand();
         $this->setIdentifier($id);
         return $id;
     }
 
-    protected function getRequestId(){
+    protected function getRequestId()
+    {
         return $this->getNewRequestCount();
     }
 
-    protected function getNewRequestCount(){
-        $cn = self::COOKIE_PREFIX.'r';
-        if($this->getCookie($cn) != null){
+    protected function getNewRequestCount()
+    {
+        $cn = self::COOKIE_PREFIX . 'r';
+        if ($this->getCookie($cn) != null) {
             $old = $this->getCookie($cn);
-        }
-        else{
+        } else {
             $old = 0;
         }
         $new = $old + 1;
@@ -170,7 +180,8 @@ class UserAdapted
         return $new;
     }
 
-    public function renderJS(){
+    public function renderJS()
+    {
         echo '<script type="text/javascript" crossorigin="anonymous" src="useradapted.js"></script>';
     }
 
@@ -181,8 +192,9 @@ class UserAdapted
      * @param $name
      * @param $value
      */
-    public function setCookie($name, $value){
-        $expire = time()+60*60*24*30; // 30 days
+    public function setCookie($name, $value)
+    {
+        $expire = time() + 60 * 60 * 24 * 30; // 30 days
         setcookie($name, $value, $expire, "/");
     }
 
@@ -192,14 +204,13 @@ class UserAdapted
      * @param $name
      * @param $value
      */
-    public function getCookie($name){
-        if(isset($_COOKIE[$name])){
+    public function getCookie($name)
+    {
+        if (isset($_COOKIE[$name])) {
             return $_COOKIE[$name];
         }
         return null;
     }
-
-
 
 
 }
@@ -216,6 +227,6 @@ function dd($var)
 function json($var, $exit = true)
 {
     echo json_encode($var);
-    if($exit)
+    if ($exit)
         exit;
 }
