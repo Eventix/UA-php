@@ -11,15 +11,15 @@ class UserAdapted
     /**
      * UserAdapted version
      */
-    const VERSION       = '0.1';
-    const HOST          = 'http://useradapted.herokuapp.com/'; // TODO: uitsplitsen per plugin
-    public $plugin      = 'analyse/headers';
-//    const HOST          = 'http://131.155.222.105:8000/analyse/headers'; // TODO: uitsplitsen per plugin
-    const COOKIE_PREFIX = '_ua';
+    const VERSION           = '0.1';
+    const HOST              = 'http://useradapted.herokuapp.com/'; // TODO: uitsplitsen per plugin
+    const COOKIE_PREFIX     = '_ua';
 
-    protected $api_key = null;
+    protected $api_key      = null;
+    protected $client_id    = 0; // Current request client identifier
 
-    protected $client_id = null; // Current request client identifier
+    public $plugin          = 'analyse/headers';
+    public $profile         = []; // Current Profile
 
     /**
      * Initiate UserAdapted
@@ -49,51 +49,57 @@ class UserAdapted
     protected function sendHeaders()
     {
         $headers = $this->buildHeaderArray();
-        $this->sendRequest(array('data' => ['headers' => $headers]));
+        return $this->sendRequest(array('data' => ['headers' => $headers]));
     }
 
-    protected function buildHeaderArray()
-    {
-        return $this->filterHeaders($_SERVER);
+    public function updateProfile($data = []){
+        $this->sendRequest($data);
     }
 
     public function sendRequest($data = [])
     {
-        $this->sendCurl($data);
+        return $this->sendCurl($data);
     }
 
     public function sendCurl($data)
     {
-        $data['identity']   = $this->getIdentifier();
+        $data['identity']   = (int) $this->getIdentifier();
         $data['probe']      = 0;
         $data['request']    = $this->getRequestId();
 
-        // Get cURL resource
         $curl = curl_init();
-//        dd(self::HOST.$this->plugin);
         curl_setopt_array($curl, array(
             CURLOPT_RETURNTRANSFER => 1,
             CURLOPT_URL => self::HOST.$this->plugin,
             CURLOPT_USERAGENT => 'UA V' . $this->version(),
-            CURLOPT_HTTPHEADER => array('Content-Type:application/json'),//            , 'Content-Length: ' . strlen(serialize($data))), -> werkt niet
+            CURLOPT_HTTPHEADER => array('Content-Type: application/json'),//            , 'Content-Length: ' . strlen(serialize($data))), -> werkt niet
             CURLOPT_POST => 1,
             CURLOPT_POSTFIELDS => json_encode($data),
             CURLOPT_CONNECTTIMEOUT  => 1,
             CURLOPT_TIMEOUT => 1,
             CURLOPT_PORT => 80,
         ));
+
         // Send the request & save response to $resp
-//        if(isset($_GET['plugin'])){
-//            echo json_encode($data);
-//            exit;
-//        }
         $resp = curl_exec($curl);
         if (FALSE === $resp)
             throw new \Exception(curl_error($curl), curl_errno($curl));
 
         // Close request to clear up some resources
         curl_close($curl);
-//        dd($resp);
+
+        // Check if response is profile and possible set new identity
+        $json =  json_decode($resp);
+        if(isset($json->identity)){
+            $this->profile = json_decode($resp);
+            if(isset($this->profile->identity)){
+                if($this->client_id == 0){
+                    // If a new client id is generated set Cookie
+                    $this->setIdentifier((int) $this->profile->identity);
+                }
+            }
+        }
+        return $resp;
     }
 
 
@@ -106,10 +112,25 @@ class UserAdapted
         return self::VERSION;
     }
 
+
+    /**
+     * Set the current plugin / path to send
+     *
+     * @param string $plugin
+     */
     public function setPlugin($plugin = 'headers'){
         $this->plugin = 'analyse/'.$plugin;
     }
 
+
+    /**
+     * Build Header Array
+     * @return array
+     */
+    protected function buildHeaderArray()
+    {
+        return $this->filterHeaders($_SERVER);
+    }
 
     /**
      * Returns a filtered list of the headers
@@ -149,25 +170,15 @@ class UserAdapted
      */
     protected function getIdentifier()
     {
+
         $cn = self::COOKIE_PREFIX; // Cookie name
         if ($this->getCookie($cn) != null) {
             $this->client_id = $this->getCookie($cn);
         } else {
-            // TODO: rewrite -1, if need info fast; 0 -> create id, remember!; >0 get profile
-            $this->client_id = $this->generateIdentifier();
+            // TODO: rewrite -1, if need info fast;
+            $this->client_id = 0;
         }
         return $this->client_id;
-    }
-
-    /**
-     * Create unique and random identifier
-     * @return string
-     */
-    protected function generateIdentifier()
-    {
-        $id = time() . mt_rand();
-        $this->setIdentifier($id);
-        return $id;
     }
 
     protected function getRequestId()
@@ -219,6 +230,25 @@ class UserAdapted
         }
         return null;
     }
+
+
+    /* ------ PHP Helper Functions */
+
+    public function isTech(){
+        // TODO: Clean this up
+        if(isset($this->profile)){
+            if(isset($this->profile->skills)){
+                if(isset($this->profile->skills->tech)){
+                    if($this->profile->skills->tech > 128){
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+
 
 
 }

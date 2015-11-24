@@ -4,7 +4,7 @@
 require __DIR__ . '/vendor/autoload.php';
 
 function dd($var){
-    print_r($var);
+    var_dump($var);
     exit;
 }
 
@@ -16,7 +16,8 @@ if(isset($_GET['plugin'])){
         $json = json_decode($request_body);
         $javascript_data = $json->data->javascript;
         $ua->setPlugin('javascript');
-        $ua->sendRequest( ['data' => ['javascript' => (array) $javascript_data]]);
+        $ua->updateProfile( ['data' => ['javascript' => (array) $javascript_data]]);
+//        dd($ua->isTech());
         exit;
     }
 }
