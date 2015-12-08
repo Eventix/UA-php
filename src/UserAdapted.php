@@ -15,7 +15,7 @@ class UserAdapted
     const HOST              = 'http://useradapted.herokuapp.com/'; // TODO: uitsplitsen per plugin
     const COOKIE_PREFIX     = '_ua';
 
-    protected $api_key      = null;
+    protected $key      = null;
     protected $client_id    = 0; // Current request client identifier
 
     public $plugin          = 'analyse/headers';
@@ -41,7 +41,7 @@ class UserAdapted
             $this->$key = $value;
         }
 
-        if ($this->api_key == null) {
+        if (!isset($this->key) || $this->key == null) {
             throw new \InvalidArgumentException('Api key not set');
         }
     }
@@ -64,15 +64,16 @@ class UserAdapted
     public function sendCurl($data)
     {
         $data['identity']   = (int) $this->getIdentifier();
-        $data['probe']      = 0;
-        $data['request']    = $this->getRequestId();
+//        $data['identity']   = 0;
+        $data['probe']      = "test";
+//        $data['request']    = $this->getRequestId();
 
         $curl = curl_init();
         curl_setopt_array($curl, array(
             CURLOPT_RETURNTRANSFER => 1,
             CURLOPT_URL => self::HOST.$this->plugin,
             CURLOPT_USERAGENT => 'UA V' . $this->version(),
-            CURLOPT_HTTPHEADER => array('Content-Type: application/json'),//            , 'Content-Length: ' . strlen(serialize($data))), -> werkt niet
+            CURLOPT_HTTPHEADER => array('Content-Type: application/json', 'Authorization: Basic '. base64_encode("postman-pete:24159455JkoHDgvXyYEyOn64pgFv5GZHLawut5ZROLi")),//            , 'Content-Length: ' . strlen(serialize($data))), -> werkt niet
             CURLOPT_POST => 1,
             CURLOPT_POSTFIELDS => json_encode($data),
             CURLOPT_CONNECTTIMEOUT  => 1,
@@ -82,6 +83,7 @@ class UserAdapted
 
         // Send the request & save response to $resp
         $resp = curl_exec($curl);
+//        dd($resp);
         if (FALSE === $resp)
             throw new \Exception(curl_error($curl), curl_errno($curl));
 
@@ -95,9 +97,12 @@ class UserAdapted
             if(isset($this->profile->identity)){
                 if($this->client_id == 0){
                     // If a new client id is generated set Cookie
-                    $this->setIdentifier((int) $this->profile->identity);
+                    $this->setIdentifier($this->profile->identity);
                 }
             }
+        }
+        else {
+            throw new \Exception('Wrong returning format : ' . $resp);
         }
         return $resp;
     }
